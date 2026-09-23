@@ -38,11 +38,16 @@ public class Car
 
     public static class Wheel
     {
-        public Wheel() {}
+        private final double price;
+
+        public Wheel(double price)
+        {
+            this.price = price;
+        }
         @Override
         public String toString()
         {
-            return "Зимнее колесо";
+            return "Зимнее колесо, цена: " + price + " т.р.";
         }
     }
 }
