@@ -67,10 +67,8 @@ public class Main {
             return constructor.newInstance();
         } catch (ReflectiveOperationException e)
         {
-            throw new IllegalArgumentException(
-                    "Невозможно создать аргумент типа '" + type.getSimpleName() + "'. " +
-                            "Добавьте в этот класс конструктор без параметров или добавьте явную обработку этого типа."
-            );
+            throw new IllegalArgumentException("Невозможно создать аргумент типа '" + type.getSimpleName() +
+                    "'. " + "Добавьте в этот класс конструктор без параметров или добавьте явную обработку этого типа.");
         }
     }
 }
