@@ -53,4 +53,10 @@ public class Sample
     {
         LOGGER.info("Это сообщение не должно появиться: " + value);
     }
+
+    @Repeat(2)
+    private void printPoint(Point point)
+    {
+        LOGGER.info("Приватный метод, точка: " + point);
+    }
 }

@@ -1,9 +1,12 @@
 package com.example.lab02.service;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,6 +24,8 @@ public class ArgumentFactory
     private static final int EMPTY_SIZE = 0;
 
     private final Map<Class<?>, Supplier<Object>> suppliers = new HashMap<>();
+
+    private final Deque<Class<?>> typesInProgress = new ArrayDeque<>();
 
     public ArgumentFactory()
     {
@@ -82,14 +87,45 @@ public class ArgumentFactory
 
     private Object createByConstructor(Class<?> type)
     {
+        if (typesInProgress.contains(type))
+        {
+            throw new IllegalArgumentException(
+                    "Циклическая зависимость конструкторов для типа " + type.getName());
+        }
+        Constructor<?> constructor = findSimplestConstructor(type);
+        typesInProgress.push(type);
         try
         {
-            return type.getConstructor().newInstance();
+            constructor.setAccessible(true);
+            Object[] args = createArgs(constructor.getParameterTypes());
+            return constructor.newInstance(args);
         }
         catch (ReflectiveOperationException e)
         {
             throw new IllegalArgumentException(
                     "Нельзя создать аргумент типа " + type.getName(), e);
         }
+        finally
+        {
+            typesInProgress.pop();
+        }
+    }
+
+    private Constructor<?> findSimplestConstructor(Class<?> type)
+    {
+        Constructor<?>[] constructors = type.getDeclaredConstructors();
+        if (constructors.length == 0)
+        {
+            throw new IllegalArgumentException("У типа " + type.getName() + " нет конструктора");
+        }
+        Constructor<?> simplest = constructors[0];
+        for (Constructor<?> candidate : constructors)
+        {
+            if (candidate.getParameterCount() < simplest.getParameterCount())
+            {
+                simplest = candidate;
+            }
+        }
+        return simplest;
     }
 }
