@@ -71,14 +71,42 @@ private static Object createDefaultValue(Class<?> type) {
         return Array.newInstance(type.getComponentType(), 0);
     }
 
-    try
+    var constructors = new ArrayList<>(List.of(type.getDeclaredConstructors()));
+    constructors.sort(Comparator.comparingInt(Constructor::getParameterCount));
+
+    var exceptions = new ArrayList<Exception>();
+
+    for (var ctor : constructors)
     {
-        var ctor = type.getDeclaredConstructor();
-        ctor.setAccessible(true);
-        return ctor.newInstance();
+        try
+        {
+            ctor.setAccessible(true);
+
+            var paramTypes = ctor.getParameterTypes();
+            var args = new Object[paramTypes.length];
+            for (var i = 0; i < paramTypes.length; i++)
+            {
+                args[i] = createDefaultValue(paramTypes[i]);
+            }
+
+            return ctor.newInstance(args);
+        }
+        catch (Exception ex)
+        {
+            exceptions.add(ex);
+        }
     }
-    catch (Exception ex)
+
+    var message = new StringBuilder("Не удалось создать значение для типа: ")
+            .append(type.getName());
+
+    for (var ex : exceptions)
     {
-        throw new IllegalArgumentException("Невозможно создать значение по умолчанию для типа: " + type.getName(), ex);
+        message.append("\n  - ")
+                .append(ex.getClass())
+                .append(": ")
+                .append(ex.getMessage());
     }
+
+    throw new IllegalArgumentException(message.toString());
 }
