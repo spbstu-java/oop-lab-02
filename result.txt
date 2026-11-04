@@ -1,0 +1,16 @@
+ get: get_method_param | status = READY, completedCalls = 1
+📄 get: get_method_param | status = READY, completedCalls = 2
+📄 get: get_method_param | status = READY, completedCalls = 3
+✍️ add: 3 | status = READY, completedCalls = 4
+✍️ add: 3 | status = READY, completedCalls = 5
+🔒📄 printProtected: print_param, 1 | status = READY, completedCalls = 6
+🔒📄 printProtected: print_param, 1 | status = READY, completedCalls = 7
+🔒🔎 inspectProtected: inspect_param, requestedStatus=READY, enabled=true | status = DONE, completedCalls = 8
+🔒🔎 inspectProtected: inspect_param, requestedStatus=READY, enabled=true | status = READY, completedCalls = 9
+🔒🔎 inspectProtected: inspect_param, requestedStatus=READY, enabled=true | status = DONE, completedCalls = 10
+🏡🧮 calculatePrivate: 1.0, 1, A | status = DONE, completedCalls = 11
+🏡🧮 calculatePrivate: 1.0, 1, A | status = DONE, completedCalls = 12
+🏡🧮 calculatePrivate: 1.0, 1, A | status = DONE, completedCalls = 13
+🏡🧮 calculatePrivate: 1.0, 1, A | status = DONE, completedCalls = 14
+🏡📄 printPrivate: [ABC, DFG], [20, 30, 52, 57] | status = DONE, completedCalls = 14
+🏡📄 printPrivate: [ABC, DFG], [20, 30, 52, 57] | status = DONE, completedCalls = 14
