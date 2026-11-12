@@ -3,6 +3,9 @@ package lab2;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Класс-вызыватель. Через рефлексию находит все методы {@link AnnotatedClass},
@@ -107,24 +110,77 @@ public final class AnnotatedMethodInvoker {
     }
 
     /**
-     * Даёт не-null экземпляр ссылочного типа: сначала через public/недоступный
-     * конструктор без параметров, затем через {@code Unsafe.allocateInstance}
-     * (создаёт объект без вызова конструктора) — чтобы гарантировать, что в
-     * метод не передаётся {@code null}.
+     * Даёт не-null экземпляр ссылочного типа. Стратегии по порядку:
+     * <ol>
+     *     <li>конструктор без параметров (public или недоступный);</li>
+     *     <li>любой доступный конструктор с параметрами — аргументы создаются
+     *     этим же механизмом по типам параметров;</li>
+     *     <li>{@code Unsafe.allocateInstance} (создаёт объект без вызова
+     *     конструктора) как крайняя мера.</li>
+     * </ol>
+     * Так гарантируется, что в метод не передаётся {@code null}, даже если у
+     * типа есть только конструкторы с параметрами.
      */
     private static Object newInstanceOrUnsafe(Class<?> type) throws ReflectiveOperationException {
+        return newInstanceOrUnsafe(type, new HashSet<>());
+    }
+
+    private static Object newInstanceOrUnsafe(Class<?> type, Set<Class<?>> visiting)
+            throws ReflectiveOperationException {
+        // Стратегия 1: конструктор без параметров.
         try {
-            Constructor<?> ctor = type.getDeclaredConstructor();
-            ctor.setAccessible(true);
-            return ctor.newInstance();
-        } catch (NoSuchMethodException e) {
-            try {
-                return allocateUnsafe(type);
-            } catch (ReflectiveOperationException ex) {
-                throw new RuntimeException(
-                        "Не удалось создать не-null экземпляр типа " + type.getName(), ex);
-            }
+            Constructor<?> noArg = type.getDeclaredConstructor();
+            noArg.setAccessible(true);
+            return noArg.newInstance();
+        } catch (NoSuchMethodException ignored) {
+            // Переходим к конструкторам с параметрами.
         }
+
+        // Защита от бесконечной рекурсии, если типы ссылаются друг на друга.
+        if (!visiting.add(type)) {
+            return allocateUnsafe(type);
+        }
+        try {
+            // Стратегия 2: любой доступный конструктор с параметрами.
+            Constructor<?>[] ctors = type.getDeclaredConstructors();
+            // Сортируем по убыванию числа параметров — сначала пробуем самый полный.
+            Arrays.sort(ctors,
+                    (a, b) -> Integer.compare(b.getParameterCount(), a.getParameterCount()));
+            for (Constructor<?> ctor : ctors) {
+                try {
+                    ctor.setAccessible(true);
+                    Object[] args = prepareArguments(ctor, visiting);
+                    return ctor.newInstance(args);
+                } catch (ReflectiveOperationException | RuntimeException ignored) {
+                    // Пробуем следующий конструктор.
+                }
+            }
+        } finally {
+            visiting.remove(type);
+        }
+
+        // Стратегия 3: создать объект без вызова конструктора.
+        try {
+            return allocateUnsafe(type);
+        } catch (ReflectiveOperationException ex) {
+            throw new RuntimeException(
+                    "Не удалось создать не-null экземпляр типа " + type.getName(), ex);
+        }
+    }
+
+    /** Формирует аргументы под конструктор, поддерживая рекурсивную вложенность. */
+    private static Object[] prepareArguments(Constructor<?> ctor, Set<Class<?>> visiting)
+            throws ReflectiveOperationException {
+        Class<?>[] parameterTypes = ctor.getParameterTypes();
+        Object[] args = new Object[parameterTypes.length];
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Class<?> paramType = parameterTypes[i];
+            args[i] = paramType.isPrimitive() || paramType == String.class
+                    || paramType == Character.class
+                    ? defaultObject(paramType)
+                    : newInstanceOrUnsafe(paramType, visiting);
+        }
+        return args;
     }
 
     private static Object allocateUnsafe(Class<?> type) throws ReflectiveOperationException {
