@@ -1,15 +1,10 @@
-import java.util.Scanner;
-
 public class Lab2 {
-  public static void main(String[] args) throws ReflectiveOperationException {
-    try (Scanner input = new Scanner(System.in)) {
-      RepeatableService service = new RepeatableService();
-      TerminalInvoker.invoke(service, "get", input);
-      TerminalInvoker.invoke(service, "add", input);
-      TerminalInvoker.invoke(service, "printProtected", input);
-      TerminalInvoker.invoke(service, "inspectProtected", input);
-      TerminalInvoker.invoke(service, "calculatePrivate", input);
-      TerminalInvoker.invoke(service, "printPrivate", input);
-    }
+  public static void main(String[] args) {
+    RepeatableService service = new RepeatableService();
+    service.get("get_method_param");
+    service.add(1, 2);
+    service.printProtected("print_param", 1);
+    service.inspectProtected("inspect_param", RepeatableService.Status.READY, true);
+    service.runPrivateWork();
   }
 }
