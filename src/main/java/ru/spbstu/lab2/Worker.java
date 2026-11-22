@@ -1,6 +1,5 @@
 package main.java.ru.spbstu.lab2;
 
-/** Класс с методами разных уровней доступа */
 public class Worker {
     public void showMessage(String message) {
         System.out.println("Публичный showMessage: " + message);
@@ -10,6 +9,11 @@ public class Worker {
         int result = first + second;
         System.out.println("Публичный calculateSum: " + result);
         return result;
+    }
+
+    @Repeat(2)
+    private void showPerson(Person person) {
+        System.out.println("Имя пользователя: " + person.getName());
     }
 
     @Repeat(2)
