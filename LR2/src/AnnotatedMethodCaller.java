@@ -5,8 +5,12 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 
 public class AnnotatedMethodCaller {
+
+    private final Set<Class<?>> constructing = new HashSet<>();
 
     public void invokeAnnotated(Object target) {
         Method[] methods = target.getClass().getDeclaredMethods();
@@ -66,7 +70,10 @@ public class AnnotatedMethodCaller {
     }
 
     private Object[] arguments(Method method) {
-        Class<?>[] types = method.getParameterTypes();
+        return arguments(method.getParameterTypes());
+    }
+
+    private Object[] arguments(Class<?>[] types) {
         Object[] args = new Object[types.length];
         for (int i = 0; i < types.length; i++) {
             args[i] = sample(types[i], i);
@@ -118,15 +125,31 @@ public class AnnotatedMethodCaller {
     }
 
     private Object newInstance(Class<?> type) {
-        try {
-            Constructor<?> constructor = type.getDeclaredConstructor();
-            constructor.setAccessible(true);
-            return constructor.newInstance();
-        } catch (ReflectiveOperationException exception) {
+        if (type.isInterface() || Modifier.isAbstract(type.getModifiers())) {
+            throw new IllegalArgumentException("Нельзя создать экземпляр " + type.getSimpleName());
+        }
+        if (!constructing.add(type)) {
             throw new IllegalArgumentException(
-                    "Не удалось создать аргумент типа " + type.getSimpleName()
-                            + ": нужен конструктор без параметров",
-                    exception);
+                    "Конструктор " + type.getSimpleName() + " снова требует " + type.getSimpleName());
+        }
+        try {
+            Constructor<?>[] constructors = type.getDeclaredConstructors();
+            Arrays.sort(constructors, Comparator.comparingInt(Constructor::getParameterCount));
+            Throwable failure = null;
+            for (Constructor<?> constructor : constructors) {
+                try {
+                    constructor.setAccessible(true);
+                    Object[] args = arguments(constructor.getParameterTypes());
+                    return constructor.newInstance(args);
+                } catch (ReflectiveOperationException | IllegalArgumentException exception) {
+                    failure = exception;
+                }
+            }
+            throw new IllegalArgumentException(
+                    "Не удалось создать аргумент типа " + type.getSimpleName(),
+                    failure);
+        } finally {
+            constructing.remove(type);
         }
     }
 
